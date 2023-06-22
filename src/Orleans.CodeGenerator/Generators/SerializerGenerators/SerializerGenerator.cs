@@ -12,12 +12,12 @@ using Microsoft.CodeAnalysis.Diagnostics;
 [Generator]
 internal partial class SerializerGenerator : BaseIncrementalGenerator
 {
-    private static IncrementalValuesProvider<(InterfaceDeclarationSyntax, SemanticModel)> _serializerInterfaceIncremetalValues;
-    private static IncrementalValuesProvider<(TypeDeclarationSyntax, SemanticModel)> _generateSerializerIncrementalValues;
-    private static IncrementalValuesProvider<(TypeDeclarationSyntax, SemanticModel)> _registerSerializerIncrementalValues;
-    private static IncrementalValuesProvider<(TypeDeclarationSyntax, SemanticModel)> _registerActivatorIncrementalValues;
-    private static IncrementalValuesProvider<(TypeDeclarationSyntax, SemanticModel)> _registerConverterIncrementalValues;
-    private static IncrementalValuesProvider<(TypeDeclarationSyntax, SemanticModel)> _registerCopierIncrementalValues;
+    private IncrementalValuesProvider<(InterfaceDeclarationSyntax, SemanticModel)> _serializerInterfaceIncremetalValues;
+    private IncrementalValuesProvider<(MemberDeclarationSyntax, SemanticModel)> _generateSerializerIncrementalValues;
+    private IncrementalValuesProvider<(TypeDeclarationSyntax, SemanticModel)> _registerSerializerIncrementalValues;
+    private IncrementalValuesProvider<(TypeDeclarationSyntax, SemanticModel)> _registerActivatorIncrementalValues;
+    private IncrementalValuesProvider<(TypeDeclarationSyntax, SemanticModel)> _registerConverterIncrementalValues;
+    private IncrementalValuesProvider<(TypeDeclarationSyntax, SemanticModel)> _registerCopierIncrementalValues;
 
     private static IncrementalValueProvider<CodeGeneratorOptions> _codeGeneratorOptions;
 
@@ -45,8 +45,8 @@ internal partial class SerializerGenerator : BaseIncrementalGenerator
         static (InterfaceDeclarationSyntax, SemanticModel) TransformForInterface(GeneratorSyntaxContext context, CancellationToken token) => ((InterfaceDeclarationSyntax)context.Node, context.SemanticModel);
         static bool TransformPredicateForInterface(SyntaxNode node, CancellationToken token) => node is InterfaceDeclarationSyntax;
 
-        static (TypeDeclarationSyntax, SemanticModel) TransformForGenerateSerializer(GeneratorAttributeSyntaxContext context, CancellationToken token) => ((TypeDeclarationSyntax)context.TargetNode, context.SemanticModel);
-        static bool TransformPredicateForGenerateSerializer(SyntaxNode node, CancellationToken token) => node is TypeDeclarationSyntax;
+        static (MemberDeclarationSyntax, SemanticModel) TransformForGenerateSerializer(GeneratorAttributeSyntaxContext context, CancellationToken token) => ((MemberDeclarationSyntax )context.TargetNode, context.SemanticModel);
+        static bool TransformPredicateForGenerateSerializer(SyntaxNode node, CancellationToken token) => node is TypeDeclarationSyntax or EnumDeclarationSyntax;
 
     }
 
@@ -68,7 +68,7 @@ internal partial class SerializerGenerator : BaseIncrementalGenerator
 
 
         static IncrementalGeneratorContext SelectContext(
-            (((((((Compilation compilation, ImmutableArray<(InterfaceDeclarationSyntax, SemanticModel)> serializerInterface) Left, ImmutableArray<(TypeDeclarationSyntax, SemanticModel)> generateSerializer)
+            (((((((Compilation compilation, ImmutableArray<(InterfaceDeclarationSyntax, SemanticModel)> serializerInterface) Left, ImmutableArray<(MemberDeclarationSyntax, SemanticModel)> generateSerializer)
             Left, ImmutableArray<(TypeDeclarationSyntax, SemanticModel)> registerSerializer) Left, ImmutableArray<(TypeDeclarationSyntax, SemanticModel)> registerActivator)
             Left, ImmutableArray<(TypeDeclarationSyntax, SemanticModel)> registerConverter) Left, ImmutableArray<(TypeDeclarationSyntax, SemanticModel)> registerCopier) Left, CodeGeneratorOptions codeGeneratorOptions) tuple, CancellationToken token)
         {
@@ -147,7 +147,7 @@ internal partial class SerializerGenerator
 {
     internal class ParserSpecs
     {
-        public ImmutableArray<(TypeDeclarationSyntax, SemanticModel)> GenerateSerializers { get; set; }
+        public ImmutableArray<(MemberDeclarationSyntax, SemanticModel)> GenerateSerializers { get; set; }
         public ImmutableArray<(InterfaceDeclarationSyntax, SemanticModel)> SerializerInterfaces { get; set; }
 
         public ImmutableArray<(TypeDeclarationSyntax, SemanticModel)> RegisterSerializers { get; set; }

@@ -2,7 +2,10 @@ namespace Orleans.CodeGenerator.Generators.SerializerGenerators;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Reflection.Metadata;
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -14,13 +17,13 @@ internal partial class SerializerGenerator
     private class Emitter : EmitterBase
     {
 
-        private static string _metadataClassName;
-        private static string _metadataClassNamespace;
-        private static SerializerGeneratorContext _context;
+        private string _metadataClassName;
+        private string _metadataClassNamespace;
+        private SerializerGeneratorContext _context;
         private static SyntaxList<UsingDirectiveSyntax> _usings = List(new[] { UsingDirective(ParseName("global::Orleans.Serialization.Codecs")), UsingDirective(ParseName("global::Orleans.Serialization.GeneratedCodeHelpers")) });
-
-        private static MetadataModel _metadataModel;
-
+        private StringBuilder _namespaces = new StringBuilder();
+        private MetadataModel _metadataModel;
+        private Dictionary<string, List<MemberDeclarationSyntax>> nsMembers = new();
         public Emitter(SerializerGeneratorContext context, SourceProductionContext sourceProductionContext) : base(sourceProductionContext)
         {
             _context = context;
@@ -42,7 +45,7 @@ internal partial class SerializerGenerator
             };
         }
 
-        private static CompilationUnitSyntax GetCompilationUnit(SyntaxList<UsingDirectiveSyntax>? usings = default, params MemberDeclarationSyntax[] namespaces)
+        private CompilationUnitSyntax GetCompilationUnit(SyntaxList<UsingDirectiveSyntax>? usings = default, params MemberDeclarationSyntax[] namespaces)
         {
             var cus = CompilationUnit().WithMembers(List(namespaces));
             if (usings != null)
@@ -50,7 +53,7 @@ internal partial class SerializerGenerator
             return cus;
         }
 
-        private static NamespaceDeclarationSyntax GetNamespaceDeclarationSyntax(string namespaceName, SyntaxList<UsingDirectiveSyntax>? usings = default, params MemberDeclarationSyntax[] memberDeclarationSyntaxes)
+        private NamespaceDeclarationSyntax GetNamespaceDeclarationSyntax(string namespaceName, SyntaxList<UsingDirectiveSyntax>? usings = default, params MemberDeclarationSyntax[] memberDeclarationSyntaxes)
         {
             var nds = NamespaceDeclaration(ParseName(namespaceName));
             if (usings is not null)
@@ -61,14 +64,14 @@ internal partial class SerializerGenerator
             return nds;
         }
 
-        private static ClassDeclarationSyntax GetClassDeclarationSyntax(params MemberDeclarationSyntax[] classMembers)
+        private ClassDeclarationSyntax GetClassDeclarationSyntax(params MemberDeclarationSyntax[] classMembers)
         {
             return ClassDeclaration(_metadataClassName + "_TypeManifestOptionsExtensionMethods")
                 .AddModifiers(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword), Token(SyntaxKind.PartialKeyword))
                 .AddMembers(classMembers);
         }
 
-        private static MethodDeclarationSyntax GetMethodDeclarationSyntax()
+        private MethodDeclarationSyntax GetMethodDeclarationSyntax()
         {
             IdentifierNameSyntax configParam = "config".ToIdentifierName();
             List<StatementSyntax> body = GetStatementSyntaxes(configParam);
@@ -87,8 +90,24 @@ internal partial class SerializerGenerator
 
             AddInvokableAndProxyClasses();
             AddSerializerTypesClasses();
-
             AddExtensionMethodClass();
+
+
+            var namespaces = new List<MemberDeclarationSyntax>(nsMembers.Count);
+            foreach (var pair in nsMembers)
+            {
+                var ns = pair.Key;
+                var member = pair.Value;
+
+                namespaces.Add(NamespaceDeclaration(ParseName(ns)).WithMembers(List(member)).WithUsings(_usings));
+            }
+
+
+            var cus= CompilationUnit()
+                .WithMembers(List(namespaces));
+
+            var content = ConvertCompilationUnitSyntaxIntoString(cus);
+            AddSource("SerializationTypes", content);
 
         }
 
@@ -101,11 +120,11 @@ internal partial class SerializerGenerator
                 // Generate a partial serializer class for each serializable type.
                 var serializer = Orleans.CodeGenerator.SerializerGenerator.GenerateSerializer(_context.LibraryTypes, type);
 
-                AddClassInSeparateFile(ns, serializer);
+                AddMember(ns, serializer);
 
                 // Generate a copier for each serializable type.
                 if (CopierGenerator.GenerateCopier(_context.LibraryTypes, type, _context.DefaultCopiers) is { } copier)
-                    AddClassInSeparateFile(ns, copier);
+                    AddMember(ns, copier);
 
                 if (!type.IsEnumType && (!type.IsValueType && type.IsEmptyConstructable && !type.UseActivator && type is not GeneratedInvokerDescription || type.HasActivatorConstructor))
                 {
@@ -113,9 +132,19 @@ internal partial class SerializerGenerator
 
                     // Generate an activator class for types with default constructor or activator constructor.
                     var activator = ActivatorGenerator.GenerateActivator(_context.LibraryTypes, type);
-                    AddClassInSeparateFile(ns, activator);
+                    AddMember(ns, activator);
                 }
             }
+        }
+
+       private void AddMember(string ns, MemberDeclarationSyntax member)
+        {
+            if (!nsMembers.TryGetValue(ns, out var existing))
+            {
+                existing = nsMembers[ns] = new List<MemberDeclarationSyntax>();
+            }
+
+            existing.Add(member);
         }
 
         private void AddInvokableAndProxyClasses()
@@ -134,12 +163,12 @@ internal partial class SerializerGenerator
                         _context.CompoundTypeAliases.Add(compoundTypeAliasArguments, generatedInvokerDescription.OpenTypeSyntax);
                     }
 
-                    AddClassInSeparateFile(ns, invokable);
+                    AddMember(ns, invokable);
                 }
 
                 var (proxy, generatedProxyDescription) = ProxyGenerator.Generate(_context.LibraryTypes, type, _metadataModel);
                 _context.GeneratedProxies.Add(generatedProxyDescription);
-                AddClassInSeparateFile(ns, proxy);
+                AddMember(ns, proxy);
             }
 
         }
@@ -150,8 +179,8 @@ internal partial class SerializerGenerator
             var cus = GetCompilationUnit(default, nds);
 
             var content = ConvertCompilationUnitSyntaxIntoString(cus);
+            _namespaces.Append(content);
 
-            AddSource(cds.Identifier.Text, content);
         }
 
         private void AddExtensionMethodClass()
@@ -164,7 +193,7 @@ internal partial class SerializerGenerator
             AddSource("SerializerExtensionMethod", content);
         }
 
-        private static List<StatementSyntax> GetStatementSyntaxes(IdentifierNameSyntax configParam)
+        private List<StatementSyntax> GetStatementSyntaxes(IdentifierNameSyntax configParam)
         {
             var body = new List<StatementSyntax>();
             var addSerializerMethod = configParam.Member("Serializers").Member("Add");
@@ -279,7 +308,7 @@ internal partial class SerializerGenerator
             return ParseTypeName(type.GeneratedNamespace + "." + name);
         }
 
-        private static void AddCompoundTypeAliases(IdentifierNameSyntax configParam, List<StatementSyntax> body)
+        private void AddCompoundTypeAliases(IdentifierNameSyntax configParam, List<StatementSyntax> body)
         {
             // The goal is to emit a tree describing all of the generated invokers in the form:
             // ("inv", typeof(ProxyBaseType), typeof(ContainingInterface), "<MethodId>")

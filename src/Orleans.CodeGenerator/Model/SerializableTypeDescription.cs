@@ -1,9 +1,9 @@
-using Orleans.CodeGenerator.SyntaxGeneration;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Orleans.CodeGenerator.SyntaxGeneration;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Orleans.CodeGenerator
@@ -130,8 +130,8 @@ namespace Orleans.CodeGenerator
 
         public string GeneratedNamespace => Namespace switch
         {
-            { Length: > 0 } ns => $"{CodeGenerator.CodeGeneratorName}.{ns}",
-            _ => CodeGenerator.CodeGeneratorName
+            { Length: > 0 } ns => $"{Constants.CodeGeneratorName}.{ns}",
+            _ => Constants.CodeGeneratorName
         };
 
         public string Name => Type.Name;

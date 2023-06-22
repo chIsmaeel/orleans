@@ -3,8 +3,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Orleans.CodeGenerator.SyntaxGeneration;
-using static Orleans.CodeGenerator.SerializerGenerator;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+using static Orleans.CodeGenerator.SerializerGenerator;
 
 namespace Orleans.CodeGenerator
 {
@@ -173,7 +173,7 @@ namespace Orleans.CodeGenerator
 
                 public ISymbol Symbol => _property;
 
-                public string FieldName => _property.Name.ToLowerInvariant(); 
+                public string FieldName => _property.Name.ToLowerInvariant();
 
                 /// <summary>
                 /// Gets the name of the setter field.
@@ -184,7 +184,7 @@ namespace Orleans.CodeGenerator
                 /// Gets syntax representing the type of this field.
                 /// </summary>
                 public TypeSyntax TypeSyntax => Type.TypeKind == TypeKind.Dynamic
-                    ? PredefinedType(Token(SyntaxKind.ObjectKeyword)) 
+                    ? PredefinedType(Token(SyntaxKind.ObjectKeyword))
                     : GetTypeSyntax(Type);
 
                 /// <summary>
@@ -245,7 +245,7 @@ namespace Orleans.CodeGenerator
                 List<(IPropertySymbol, uint)> dataMembers = new();
                 foreach (var property in symbol.GetDeclaredInstanceMembers<IPropertySymbol>())
                 {
-                    var id = CodeGenerator.GetId(libraryTypes, property);
+                    var id = GeneratorHelper.GetId(libraryTypes, property);
                     if (!id.HasValue)
                     {
                         continue;
@@ -286,7 +286,7 @@ namespace Orleans.CodeGenerator
 
                 public INamedTypeSymbol ContainingType => _property.ContainingType;
 
-                public string FieldName => _property.Name + "@"; 
+                public string FieldName => _property.Name + "@";
 
                 /// <summary>
                 /// Gets the name of the setter field.
@@ -297,7 +297,7 @@ namespace Orleans.CodeGenerator
                 /// Gets syntax representing the type of this field.
                 /// </summary>
                 public TypeSyntax TypeSyntax => Type.TypeKind == TypeKind.Dynamic
-                    ? PredefinedType(Token(SyntaxKind.ObjectKeyword)) 
+                    ? PredefinedType(Token(SyntaxKind.ObjectKeyword))
                     : GetTypeSyntax(Type);
 
                 /// <summary>

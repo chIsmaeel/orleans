@@ -103,8 +103,8 @@ namespace Orleans.CodeGenerator
 
         public static string GetGeneratedNamespaceName(ITypeSymbol type) => type.GetNamespaceAndNesting() switch
         {
-            { Length: > 0 } ns => $"{CodeGenerator.CodeGeneratorName}.{ns}",
-            _ => CodeGenerator.CodeGeneratorName
+            { Length: > 0 } ns => $"{Constants.CodeGeneratorName}.{ns}",
+            _ => Constants.CodeGeneratorName
         };
 
         private static MemberDeclarationSyntax[] GetFieldDeclarations(List<GeneratedFieldDescription> fieldDescriptions)

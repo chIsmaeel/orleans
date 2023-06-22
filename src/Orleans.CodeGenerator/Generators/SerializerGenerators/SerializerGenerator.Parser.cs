@@ -2,6 +2,7 @@ namespace Orleans.CodeGenerator.Generators.SerializerGenerators;
 
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -16,24 +17,22 @@ internal partial class SerializerGenerator
     internal class Parser : ParserBase
     {
 
-        private static SerializerGeneratorContext _serializerContext;
-        private static ParserSpecs _parserSpecs;
+        private SerializerGeneratorContext _serializerContext;
+        private ParserSpecs _parserSpecs;
         private CodeGeneratorOptions _options;
-        private static LibraryTypes _libraryTypes;
+        private LibraryTypes _libraryTypes;
         private readonly INamedTypeSymbol[] _generateSerializerAttributes;
-        private static INamedTypeSymbol _fSharpSourceConstructFlagsOrDefault;
-        private static INamedTypeSymbol _fSharpCompilationMappingAttributeOrDefault;
+        private INamedTypeSymbol _fSharpSourceConstructFlagsOrDefault;
+        private INamedTypeSymbol _fSharpCompilationMappingAttributeOrDefault;
 
         internal LibraryTypes LibraryTypes { get => _libraryTypes; set => _libraryTypes = value; }
 
         public Parser(ParserSpecs parserSpecs) : base(parserSpecs.Compilation)
         {
-            //Debugger.Launch();
             _parserSpecs = parserSpecs;
             _options = parserSpecs.CodeGeneratorOptions;
             LibraryTypes = LibraryTypes.FromCompilation(parserSpecs.Compilation, parserSpecs.CodeGeneratorOptions);
             _generateSerializerAttributes = parserSpecs.CodeGeneratorOptions.GenerateSerializerAttributes.Select(compilation.GetTypeByMetadataName).ToArray();
-
             _serializerContext = new()
             {
                 LibraryTypes = _libraryTypes,
@@ -347,7 +346,7 @@ internal partial class SerializerGenerator
         {
             foreach (var item in _parserSpecs.GenerateSerializers)
             {
-                var symbol = item.Item2.GetDeclaredSymbol(item.Item1);
+                var symbol =(INamedTypeSymbol) item.Item2.GetDeclaredSymbol(item.Item1);
                 var semanticModel = item.Item2;
                 if (FSharpUtilities.IsUnionCase(LibraryTypes, symbol, out var sumType))
                 {

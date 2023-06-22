@@ -44,7 +44,7 @@ internal static class GeneratorHelper
             Attribute(ParseName("global::System.CodeDom.Compiler.GeneratedCodeAttribute"))
                 .AddArgumentListArguments(
                     AttributeArgument(Constants.CodeGeneratorName.GetLiteralExpression()),
-                    AttributeArgument(typeof(CodeGenerator).Assembly.GetName().Version.ToString().GetLiteralExpression()));
+                    AttributeArgument(typeof(SerializerGenerator).Assembly.GetName().Version.ToString().GetLiteralExpression()));
 
     internal static AttributeSyntax GetMethodImplAttributeSyntax() => MethodImplAttributeSyntax;
     private static readonly AttributeSyntax MethodImplAttributeSyntax =

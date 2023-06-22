@@ -1,6 +1,7 @@
 namespace Orleans.CodeGenerator.Generators.AliasGenerators;
 
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -19,7 +20,6 @@ internal partial class AliasGenerator
 
         public Parser(Compilation compilation) : base(compilation)
         {
-
             _aliasAttribute = Type(Constants.AliasAttribute);
             _aliasContext = new()
             {

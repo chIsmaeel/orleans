@@ -30,7 +30,7 @@ namespace Orleans.CodeGenerator.MSBuild
         };
 
         public ILogger Log { get; set; }
-        
+
         /// <summary>
         /// The MS Build project path.
         /// </summary>
@@ -90,7 +90,7 @@ namespace Orleans.CodeGenerator.MSBuild
                 var languageName = GetLanguageName(ProjectPath);
                 var documents = GetDocuments(Compile, projectId).ToList();
                 var metadataReferences = GetMetadataReferences(Reference).ToList();
-                
+
                 foreach (var doc in documents)
                 {
                     Log.LogDebug("Document: {FilePath}", doc.FilePath);
@@ -136,48 +136,48 @@ namespace Orleans.CodeGenerator.MSBuild
                 codeGeneratorOptions.GenerateSerializerAttributes.AddRange(GenerateSerializerAttributes);
                 codeGeneratorOptions.ConstructorAttributes.AddRange(ConstructorAttributes);
 
-                var generator = new CodeGenerator(compilation, codeGeneratorOptions);
-                stopwatch.Restart();
-                var syntax = generator.GenerateCode(cancellationToken);
-                Log.LogInformation(
-                    "GenerateCode completed in {ElapsedMilliseconds}ms.",
-                    stopwatch.ElapsedMilliseconds);
-                stopwatch.Restart();
-                
-                var normalized = syntax.NormalizeWhitespace();
-                Log.LogInformation("NormalizeWhitespace completed in {ElapsedMilliseconds}ms.",
-                    stopwatch.ElapsedMilliseconds);
-                stopwatch.Restart();
+                //var generator = new CodeGenerator(compilation, codeGeneratorOptions);
+                //stopwatch.Restart();
+                //var syntax = generator.GenerateCode(cancellationToken);
+                //Log.LogInformation(
+                //    "GenerateCode completed in {ElapsedMilliseconds}ms.",
+                //    stopwatch.ElapsedMilliseconds);
+                //stopwatch.Restart();
 
-                var source = normalized.ToFullString();
-                Log.LogInformation(
-                    "Generate source from syntax completed in {ElapsedMilliseconds}ms.",
-                    stopwatch.ElapsedMilliseconds);
-                stopwatch.Restart();
-                using (var sourceWriter = new StreamWriter(CodeGenOutputFile))
-                {
-                    sourceWriter.WriteLine("#if !EXCLUDE_GENERATED_CODE");
-                    foreach (var warningNum in SuppressCompilerWarnings)
-                    {
-                        await sourceWriter.WriteLineAsync($"#pragma warning disable {warningNum}");
-                    }
+                //var normalized = syntax.NormalizeWhitespace();
+                //Log.LogInformation("NormalizeWhitespace completed in {ElapsedMilliseconds}ms.",
+                //    stopwatch.ElapsedMilliseconds);
+                //stopwatch.Restart();
 
-                    if (!string.IsNullOrWhiteSpace(source))
-                    {
-                        await sourceWriter.WriteLineAsync(source);
-                    }
+                //var source = normalized.ToFullString();
+                //Log.LogInformation(
+                //    "Generate source from syntax completed in {ElapsedMilliseconds}ms.",
+                //    stopwatch.ElapsedMilliseconds);
+                //stopwatch.Restart();
+                //using (var sourceWriter = new StreamWriter(CodeGenOutputFile))
+                //{
+                //    sourceWriter.WriteLine("#if !EXCLUDE_GENERATED_CODE");
+                //    foreach (var warningNum in SuppressCompilerWarnings)
+                //    {
+                //        await sourceWriter.WriteLineAsync($"#pragma warning disable {warningNum}");
+                //    }
 
-                    foreach (var warningNum in SuppressCompilerWarnings)
-                    {
-                        await sourceWriter.WriteLineAsync($"#pragma warning restore {warningNum}");
-                    }
+                //    if (!string.IsNullOrWhiteSpace(source))
+                //    {
+                //        await sourceWriter.WriteLineAsync(source);
+                //    }
 
-                    sourceWriter.WriteLine("#endif");
-                }
+                //    foreach (var warningNum in SuppressCompilerWarnings)
+                //    {
+                //        await sourceWriter.WriteLineAsync($"#pragma warning restore {warningNum}");
+                //    }
 
-                Log.LogInformation(
-                    "Write source to disk completed in {ElapsedMilliseconds}ms.",
-                    stopwatch.ElapsedMilliseconds);
+                //    sourceWriter.WriteLine("#endif");
+                //}
+
+                //Log.LogInformation(
+                //    "Write source to disk completed in {ElapsedMilliseconds}ms.",
+                //    stopwatch.ElapsedMilliseconds);
 
                 return true;
             }
