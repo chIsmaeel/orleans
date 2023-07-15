@@ -22,6 +22,8 @@ namespace Orleans.CodeGenerator
         public List<string> ImmutableAttributes { get; } = new() { "Orleans.ImmutableAttribute" };
         public List<string> ConstructorAttributes { get; } = new() { "Orleans.OrleansConstructorAttribute", "Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructorAttribute" };
         public GenerateFieldIds GenerateFieldIds { get; set; }
+
+        public bool IsLaunchDebugger { get; set; }
     }
 
     public class CodeGenerator
@@ -41,10 +43,19 @@ namespace Orleans.CodeGenerator
 
         internal LibraryTypes LibraryTypes { get; }
 
+        public CodeGeneratorOptions Options => _options;
+
+        public Compilation Compilation => _compilation;
+
         public CompilationUnitSyntax GenerateCode(CancellationToken cancellationToken)
         {
             // Collect metadata from the compilation.
             var metadataModel = GenerateMetadataModel(cancellationToken);
+            return GetCompilationUnitSyntax(metadataModel);
+        }
+
+        internal CompilationUnitSyntax GetCompilationUnitSyntax(MetadataModel metadataModel)
+        {
             var nsMembers = new Dictionary<string, List<MemberDeclarationSyntax>>();
 
             foreach (var type in metadataModel.InvokableInterfaces)
@@ -92,8 +103,8 @@ namespace Orleans.CodeGenerator
             }
 
             // Generate metadata.
-            var metadataClassNamespace = CodeGeneratorName + "." + SyntaxGeneration.Identifier.SanitizeIdentifierName(_compilation.AssemblyName);
-            ClassDeclarationSyntax metadataClass = MetadataGenerator.GenerateMetadata(_compilation, metadataModel, LibraryTypes);
+            var metadataClassNamespace = CodeGeneratorName + "." + SyntaxGeneration.Identifier.SanitizeIdentifierName(Compilation.AssemblyName);
+            ClassDeclarationSyntax metadataClass = MetadataGenerator.GenerateMetadata(Compilation, metadataModel, LibraryTypes);
             AddMember(ns: metadataClassNamespace, member: metadataClass);
             var metadataAttribute = AttributeList()
                 .WithTarget(AttributeTargetSpecifier(Token(SyntaxKind.AssemblyKeyword)))
@@ -171,8 +182,8 @@ namespace Orleans.CodeGenerator
             {
                 foreach (var symbol in asm.GetDeclaredTypes())
                 {
-                    var syntaxTree = symbol.DeclaringSyntaxReferences.FirstOrDefault()?.SyntaxTree ?? _compilation.SyntaxTrees.First();
-                    var semanticModel = _compilation.GetSemanticModel(syntaxTree);
+                    var syntaxTree = symbol.DeclaringSyntaxReferences.FirstOrDefault()?.SyntaxTree ?? Compilation.SyntaxTrees.First();
+                    var semanticModel = Compilation.GetSemanticModel(syntaxTree);
 
                     if (GetWellKnownTypeId(symbol) is uint wellKnownTypeId)
                     {
@@ -239,7 +250,7 @@ namespace Orleans.CodeGenerator
                                 }
                             }
 
-                            var implicitMemberSelectionStrategy = (_options.GenerateFieldIds, GetGenerateFieldIdsOptionFromType(symbol)) switch
+                            var implicitMemberSelectionStrategy = (Options.GenerateFieldIds, GetGenerateFieldIdsOptionFromType(symbol)) switch
                             {
                                 (_, GenerateFieldIds.PublicProperties) => GenerateFieldIds.PublicProperties,
                                 (GenerateFieldIds.PublicProperties, _) => GenerateFieldIds.PublicProperties,

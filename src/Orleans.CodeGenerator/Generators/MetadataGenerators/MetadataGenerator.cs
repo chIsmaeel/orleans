@@ -3,7 +3,7 @@ using System.Threading;
 using Microsoft.CodeAnalysis;
 using Orleans.CodeGenerator.Generators;
 
-[Generator]
+//[Generator]
 internal partial class MetadataGenerator : BaseIncrementalGenerator
 {
 
@@ -13,7 +13,7 @@ internal partial class MetadataGenerator : BaseIncrementalGenerator
 
 
 
-    protected override IncrementalValueProvider<IncrementalGeneratorContext> Execute(IncrementalGeneratorInitializationContext context)
+    public override IncrementalValueProvider<IncrementalGeneratorContext> Execute(IncrementalGeneratorInitializationContext context)
     {
         return context.CompilationProvider.Select(SelectApplicationParts);
 

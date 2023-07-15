@@ -1,16 +1,28 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Diagnostics;
 using Orleans.CodeGenerator.Diagnostics;
+using Orleans.CodeGenerator.Generators;
+using Orleans.CodeGenerator.Generators.AliasGenerators;
+using Orleans.CodeGenerator.Generators.CompoundAliasGenerators;
+using Orleans.CodeGenerator.Generators.MetadataGenerators;
+using Orleans.CodeGenerator.Generators.SerializerGenerators;
+using Orleans.CodeGenerator.Generators.WellKnownIdGenerators;
 
 namespace Orleans.CodeGenerator
 {
-    //[Generator]
+    [Generator]
     public sealed partial class OrleansSerializationSourceGenerator : IIncrementalGenerator
     {
+
+        private static IncrementalValueProvider<TContext> GetIncrementalValueContext<TGenerator, TContext>(IncrementalGeneratorInitializationContext context) where TGenerator : BaseIncrementalGenerator, new() where TContext : IncrementalGeneratorContext
+        {
+            TGenerator generator = new();
+            generator.Initialize(context);
+
+            return generator.Execute(context).Select((ctx, _) => (TContext)ctx);
+        }
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
@@ -20,90 +32,80 @@ namespace Orleans.CodeGenerator
                 return;
             }
 
-            var contextGenerationSpecs = context.AnalyzerConfigOptionsProvider
-                .Select(GetCodeGeneratorOptions)
-                .Combine(context.CompilationProvider)
-                .Combine(context.AnalyzerConfigOptionsProvider)
-                .Select(static (tuple, _) =>
-                {
-                    var codeGenerator = new CodeGenerator(tuple.Left.Right, tuple.Left.Left);
-                    return new ContextGenerationSpecs()
-                    {
-                        LibraryTypes = codeGenerator.LibraryTypes,
-                        Compilation = tuple.Left.Right,
-                        AnalyzerConfigOptionsProvider = tuple.Right,
-                        CodeGeneratorOptions = tuple.Left.Left,
-                        MetadataModel = codeGenerator.GenerateMetadataModel(_)
+            var aliasIncrementalValueContext = GetIncrementalValueContext<AliasGenerator, AliasGeneratorContext>(context);
+
+            var compoundAliasIncrementalValueContext = GetIncrementalValueContext<CompoundAliasGenerator, CompoundAliasGeneratorContext>(context);
+
+            var serializerIncrementalValueContext = GetIncrementalValueContext<Generators.SerializerGenerators.SerializerGenerator, SerializerGeneratorContext>(context);
+
+            var metaDataIncrementalValueContext = GetIncrementalValueContext<Generators.MetadataGenerators.MetadataGenerator, MetadataGeneratorContext>(context);
+
+            var wellKnownTypeIdIncrementalValueContext = GetIncrementalValueContext<WellKnownIdGenerator, WellKnownIdGeneratorContext>(context);
 
 
-                    };
-                });
+            var optionIncrementalValue = context.AnalyzerConfigOptionsProvider.Select((ctx, _) => Generators.SerializerGenerators.SerializerGenerator.GetCodeGeneratorOptions(ctx, _));
 
-            context.RegisterSourceOutput(contextGenerationSpecs, RegisterSourceOutput);
+
+            var modelIncrementalValue = aliasIncrementalValueContext
+                  .Combine(compoundAliasIncrementalValueContext)
+                  .Combine(wellKnownTypeIdIncrementalValueContext)
+                  .Combine(serializerIncrementalValueContext)
+                  .Combine(metaDataIncrementalValueContext)
+                  .Select((ctx, _) =>
+                  {
+                      var metadataModel = new MetadataModel()
+                      {
+                          TypeAliases = ctx.Left.Left.Left.Left.TypeAliases,
+                          CompoundTypeAliases = ctx.Left.Left.Left.Right.CompoundTypeAliases,
+                          WellKnownTypeIds = ctx.Left.Left.Right.WellKnownTypeIds,
+                          SerializableTypes = ctx.Left.Right.SerializableTypes,
+                          ActivatableTypes = ctx.Left.Right.ActivatableTypes,
+                          ApplicationParts = ctx.Right.ApplicationParts,
+                          DefaultCopiers = ctx.Left.Right.DefaultCopiers,
+                          DetectedActivators = ctx.Left.Right.DetectedActivators,
+                          DetectedConverters = ctx.Left.Right.DetectedConverters,
+                          DetectedCopiers = ctx.Left.Right.DetectedCopiers,
+                          DetectedSerializers = ctx.Left.Right.DetectedSerializers,
+                          GeneratedInvokables = ctx.Left.Right.GeneratedInvokables,
+                          GeneratedProxies = ctx.Left.Right.GeneratedProxies,
+                          InvokableInterfaceImplementations = ctx.Left.Right.InvokableInterfaceImplementations,
+                          InvokableInterfaces = ctx.Left.Right.InvokableInterfaces
+
+
+                      };
+
+                      return metadataModel;
+                  }
+              );
+
+
+            var codeGeneratorIncrementalValue = context.CompilationProvider
+                .Combine(optionIncrementalValue)
+
+                .Select((tuple, _) => new CodeGenerator(tuple.Left, tuple.Right));
+            context.RegisterSourceOutput(codeGeneratorIncrementalValue.Combine(modelIncrementalValue), RegisterSourceOutput);
         }
 
-        private static CodeGeneratorOptions GetCodeGeneratorOptions(AnalyzerConfigOptionsProvider acop, CancellationToken token)
+        private static void RegisterSourceOutput(SourceProductionContext context, (CodeGenerator CodeGenerator, MetadataModel MetadataModel) specs)
         {
             try
             {
-                var options = new CodeGeneratorOptions();
-                if (acop.GlobalOptions.TryGetValue("build_property.orleans_immutableattributes", out var immutableAttributes) && immutableAttributes is { Length: > 0 })
-                {
-                    options.ImmutableAttributes.AddRange(immutableAttributes.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList());
-                }
-
-                if (acop.GlobalOptions.TryGetValue("build_property.orleans_aliasattributes", out var aliasAttributes) && aliasAttributes is { Length: > 0 })
-                {
-                    options.AliasAttributes.AddRange(aliasAttributes.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList());
-                }
-
-                if (acop.GlobalOptions.TryGetValue("build_property.orleans_idattributes", out var idAttributes) && idAttributes is { Length: > 0 })
-                {
-                    options.IdAttributes.AddRange(idAttributes.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList());
-                }
-
-                if (acop.GlobalOptions.TryGetValue("build_property.orleans_generateserializerattributes", out var generateSerializerAttributes) && generateSerializerAttributes is { Length: > 0 })
-                {
-                    options.GenerateSerializerAttributes.AddRange(generateSerializerAttributes.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList());
-                }
-
-                if (acop.GlobalOptions.TryGetValue("build_property.orleans_generatefieldids", out var generateFieldIds) && generateFieldIds is { Length: > 0 })
-                {
-                    if (Enum.TryParse(generateFieldIds, out GenerateFieldIds fieldIdOption))
-                        options.GenerateFieldIds = fieldIdOption;
-                }
-                return options;
-            }
-            catch (Exception)
-            {
-                return null;
-            }
-        }
-
-        private static void RegisterSourceOutput(SourceProductionContext context, ContextGenerationSpecs specs)
-        {
-            try
-            {
-                if (specs.CodeGeneratorOptions == null)
+                if (specs.CodeGenerator.Options == null)
                 {
                     return;
                 }
 
-                if (specs.AnalyzerConfigOptionsProvider.GlobalOptions.TryGetValue("build_property.orleans_designtimebuild", out var isDesignTimeBuild)
-                    && string.Equals("true", isDesignTimeBuild, StringComparison.OrdinalIgnoreCase))
-                {
-                    return;
-                }
-
-                if (specs.AnalyzerConfigOptionsProvider.GlobalOptions.TryGetValue("build_property.orleans_attachdebugger", out var attachDebuggerOption)
-                    && string.Equals("true", attachDebuggerOption, StringComparison.OrdinalIgnoreCase))
+                if (specs.CodeGenerator.Options.IsLaunchDebugger)
                 {
                     Debugger.Launch();
                 }
 
 
-                Emitter emitter = new Emitter(context, specs);
-                emitter.Emit();
+                var compilationUnitSyntax = specs.CodeGenerator.GetCompilationUnitSyntax(specs.MetadataModel);
+
+                var sourceString = compilationUnitSyntax.NormalizeWhitespace().ToFullString();
+                context.AddSource($"{specs.CodeGenerator.Compilation.AssemblyName ?? "assembly"}.orleans", sourceString);
+
             }
             catch (Exception exception) when (HandleException(context, exception))
             {

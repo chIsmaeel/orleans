@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-[Generator]
+//[Generator]
 internal partial class SerializerGenerator : BaseIncrementalGenerator
 {
     private static IncrementalValuesProvider<(InterfaceDeclarationSyntax, SemanticModel)> _serializerInterfaceIncremetalValues;
@@ -52,7 +52,7 @@ internal partial class SerializerGenerator : BaseIncrementalGenerator
 
 
 
-    protected override IncrementalValueProvider<IncrementalGeneratorContext> Execute(IncrementalGeneratorInitializationContext context)
+    public override IncrementalValueProvider<IncrementalGeneratorContext> Execute(IncrementalGeneratorInitializationContext context)
     {
         _codeGeneratorOptions = context.AnalyzerConfigOptionsProvider.Select(GetCodeGeneratorOptions);
         return context.CompilationProvider
@@ -100,11 +100,28 @@ internal partial class SerializerGenerator : BaseIncrementalGenerator
     }
 
 
-    private static CodeGeneratorOptions GetCodeGeneratorOptions(AnalyzerConfigOptionsProvider acop, CancellationToken token)
+    public static CodeGeneratorOptions GetCodeGeneratorOptions(AnalyzerConfigOptionsProvider acop, CancellationToken token)
     {
         try
         {
+
+
+            if (acop.GlobalOptions.TryGetValue("build_property.orleans_designtimebuild", out var isDesignTimeBuild)
+                && string.Equals("true", isDesignTimeBuild, StringComparison.OrdinalIgnoreCase))
+            {
+                return default;
+            }
+
+
             var options = new CodeGeneratorOptions();
+
+            if (acop.GlobalOptions.TryGetValue("build_property.orleans_attachdebugger", out var attachDebuggerOption)
+              && string.Equals("true", attachDebuggerOption, StringComparison.OrdinalIgnoreCase))
+            {
+                options.IsLaunchDebugger = true;
+            }
+
+
             if (acop.GlobalOptions.TryGetValue("build_property.orleans_immutableattributes", out var immutableAttributes) && immutableAttributes is { Length: > 0 })
             {
                 options.ImmutableAttributes.AddRange(immutableAttributes.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList());

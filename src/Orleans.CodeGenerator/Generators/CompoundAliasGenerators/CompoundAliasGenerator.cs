@@ -5,7 +5,7 @@ using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-[Generator]
+//[Generator]
 internal partial class CompoundAliasGenerator : BaseIncrementalGenerator
 {
     private static IncrementalValuesProvider<(TypeDeclarationSyntax, SemanticModel)> _compoundAliasTypesIncremetalValues;
@@ -18,7 +18,7 @@ internal partial class CompoundAliasGenerator : BaseIncrementalGenerator
         static (TypeDeclarationSyntax, SemanticModel) Transform(GeneratorAttributeSyntaxContext context, CancellationToken token) => ((TypeDeclarationSyntax)context.TargetNode, context.SemanticModel);
         static bool TransformPredicate(SyntaxNode node, CancellationToken token) => node is TypeDeclarationSyntax;
     }
-    protected override IncrementalValueProvider<IncrementalGeneratorContext> Execute(IncrementalGeneratorInitializationContext context)
+    public override IncrementalValueProvider<IncrementalGeneratorContext> Execute(IncrementalGeneratorInitializationContext context)
     {
         return context.CompilationProvider.Combine(_compoundAliasTypesIncremetalValues.Collect()).Select(SelectContext);
 

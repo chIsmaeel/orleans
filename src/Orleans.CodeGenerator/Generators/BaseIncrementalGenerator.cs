@@ -14,10 +14,10 @@ internal abstract class BaseIncrementalGenerator : IIncrementalGenerator
 
         AddSyntaxProvider(context.SyntaxProvider);
 
-        var incrementalGeneratorContext = Execute(context);
+        //var incrementalGeneratorContext = Execute(context);
 
 
-        context.RegisterSourceOutput(incrementalGeneratorContext, RegisterSourceOutputPrivate);
+        //context.RegisterSourceOutput(incrementalGeneratorContext, RegisterSourceOutputPrivate);
     }
 
     protected virtual void PostInitializationOutputCallback(IncrementalGeneratorPostInitializationContext context) { }
@@ -35,7 +35,7 @@ internal abstract class BaseIncrementalGenerator : IIncrementalGenerator
     }
 
     protected abstract void RegisterSourceOutput(SourceProductionContext context, IncrementalGeneratorContext igContext);
-    protected abstract IncrementalValueProvider<IncrementalGeneratorContext> Execute(IncrementalGeneratorInitializationContext context);
+    public abstract IncrementalValueProvider<IncrementalGeneratorContext> Execute(IncrementalGeneratorInitializationContext context);
     protected abstract void AddSyntaxProvider(SyntaxValueProvider syntaxProvider);
 
     private static bool HandleException(SourceProductionContext context, Exception exception)

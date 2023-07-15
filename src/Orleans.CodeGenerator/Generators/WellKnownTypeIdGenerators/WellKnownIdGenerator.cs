@@ -5,7 +5,7 @@ using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-[Generator]
+//[Generator]
 internal partial class WellKnownIdGenerator : BaseIncrementalGenerator
 {
     private static IncrementalValuesProvider<(TypeDeclarationSyntax, SemanticModel)> _wellKnownIdTypeIncremetalValues;
@@ -17,7 +17,7 @@ internal partial class WellKnownIdGenerator : BaseIncrementalGenerator
         static (TypeDeclarationSyntax, SemanticModel) Transform(GeneratorAttributeSyntaxContext context, CancellationToken token) => ((TypeDeclarationSyntax)context.TargetNode, context.SemanticModel);
         static bool TransformPredicate(SyntaxNode node, CancellationToken token) => node is TypeDeclarationSyntax;
     }
-    protected override IncrementalValueProvider<IncrementalGeneratorContext> Execute(IncrementalGeneratorInitializationContext context)
+    public override IncrementalValueProvider<IncrementalGeneratorContext> Execute(IncrementalGeneratorInitializationContext context)
     {
         return context.CompilationProvider.Combine(_wellKnownIdTypeIncremetalValues.Collect()).Select(SelectContext);
 
